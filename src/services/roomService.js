@@ -1,10 +1,10 @@
 const rooms = [];
-let lasttRoomId = 0;
+let lastRoomId = 0;
 
 const createRoom = (userId, userName) => {
 	const room = {
-		roomId: ++lasttRoomId,
-		roomUserIds: [{
+		roomId: ++lastRoomId,
+		roomUsers: [{
 			userId: userId,
 			userName: userName
 		}],
@@ -19,7 +19,7 @@ const updateRoom = () => {
 		.map(room => {
 			return {
 				roomId: room.roomId,
-				roomUsers: roomUsers
+				roomUsers: room.roomUsers
 			}
 		});
 	return availableRooms;

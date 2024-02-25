@@ -1,5 +1,5 @@
 import { httpServer } from "./src/http_server/index.js";
-import { WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import * as userService from './src/services/userService.js';
 import * as roomService from './src/services/roomService.js';
 
@@ -12,6 +12,7 @@ const wss = new WebSocketServer({ port: 3000 });
 
 wss.on('connection', ws => {
 	console.log('Start new connection');
+	let currentUser;
 	ws.on('message', (message) => {
 		const response = JSON.parse(message.toString());
 		const data = response.data ? JSON.parse(response.data) : response.data;
@@ -19,6 +20,7 @@ wss.on('connection', ws => {
 		switch (response.type) {
 			case 'reg':
 				const newUser = userService.createUser(data);
+				currentUser = newUser;
 				const regInfo = {
 					type: 'reg',
 					data:
@@ -31,9 +33,17 @@ wss.on('connection', ws => {
 					id: 0,
 				};
 				ws.send(JSON.stringify(regInfo));
-
+				wss.clients.forEach(client => {
+					if (client.readyState === WebSocket.OPEN) {
+						updateRoom(client);
+						updateWinners(client);
+					}
+				});
+				break;
+			case 'create_room':
+				roomService.createRoom(currentUser.id, currentUser.name);
 				updateRoom(ws);
-				updateWinners(ws);
+				break;
 		}
 	});
 
