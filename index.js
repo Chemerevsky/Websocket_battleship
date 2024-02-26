@@ -18,7 +18,6 @@ wss.on('connection', ws => {
 	ws.on('message', (message) => {
 		const response = JSON.parse(message.toString());
 		const data = response.data ? JSON.parse(response.data) : response.data;
-		console.log(response);
 		switch (response.type) {
 			case 'reg':
 				const userResult = userService.createUser(data);
@@ -49,6 +48,7 @@ wss.on('connection', ws => {
 				break;
 			case 'add_user_to_room':
 				roomService.addUserToRoom(data.indexRoom, currentUser);
+
 				const game = gameService.createGame(data.indexRoom);
 				wss.clients.forEach(client => {
 					if (client.readyState === WebSocket.OPEN) {
@@ -63,6 +63,28 @@ wss.on('connection', ws => {
 					wss.clients.forEach(client => {
 						if (client.readyState === WebSocket.OPEN) {
 							startGame(client, data.indexPlayer, data.ships);
+							turn(client, data.indexPlayer);
+						}
+					});
+				}
+				break;
+			case 'attack':
+				const status = gameService.attack(data.gameId, data.x, data.y, data.indexPlayer);
+				wss.clients.forEach(client => {
+					if (client.readyState === WebSocket.OPEN) {
+						turn(client, data.indexPlayer);
+						attack(client, data.x, data.y, data.indexPlayer, status);
+					}
+				});
+
+				const continueGame = gameService.hasEnemyShip(data.gameId, data.indexPlayer);
+				if (!continueGame) {
+					const userId = gameService.getUserIdByPlayerId(data.indexPlayer);
+					userService.addWin(userId);
+					wss.clients.forEach(client => {
+						if (client.readyState === WebSocket.OPEN) {
+							finish(client, data.indexPlayer);
+							updateWinners(client);
 						}
 					});
 				}
@@ -125,4 +147,43 @@ const startGame = (ws, ships, playerId) => {
 	}
 
 	ws.send(JSON.stringify(startGameInfo));
+}
+
+const turn = (ws, playerId) => {
+	const turnInfo = {
+		type: 'turn',
+		data: JSON.stringify({currentPlayer: playerId}),
+		id: 0,
+	}
+
+	ws.send(JSON.stringify(turnInfo));
+}
+
+const attack = (ws, x, y, playerId, status) => {
+	const attackInfo = {
+		type: 'attack',
+		data: JSON.stringify({
+			position: {
+				x: x,
+				y: y
+			},
+			currentPlayer: playerId,
+			status: status
+		}),
+		id: 0,
+	}
+
+	ws.send(JSON.stringify(attackInfo));
+}
+
+const finish = (ws, playerId) => {
+	const finishInfo = {
+		type: 'finish',
+		data: JSON.stringify({
+			winPlayer: playerId
+		}),
+		id: 0,
+	}
+
+	ws.send(JSON.stringify(finishInfo));
 }

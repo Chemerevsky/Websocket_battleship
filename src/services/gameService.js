@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { convertShipsToMatrix } from './utils.js'
 
 const games = [];
 const playerIdUserId = new Map();
@@ -27,9 +28,11 @@ const addPlayer = (gameId, playerId, userId) => {
 const addShips = (gameId, playerId, ships) => {
 	const game = games.find(g => g.gameId === gameId);
 	if (game) {
+		const shipMatrix = convertShipsToMatrix(ships);
 		game.playerShips.push({
 			playerId: playerId,
-			ships: ships
+			ships: ships,
+			shipMatrix: shipMatrix
 		});
 	}
 }
@@ -43,4 +46,49 @@ const canStartGame = (gameId) => {
 	return false;
 }
 
-export { createGame, addPlayer,addShips, canStartGame };
+const attack = (gameId, x, y, playerId) => {
+	const game = games.find(g => g.gameId === gameId);
+	if (!game) {
+		return;
+	}
+
+	let status = 'miss';
+	const enemyShips = game.playerShips.find(p => p.playerId !== playerId);
+	if (enemyShips.shipMatrix[y][x] === 1) {
+		enemyShips.shipMatrix[y][x] = 0;
+		if (wasKilled(enemyShips.shipMatrix, x, y)) {
+			status = 'killed';
+		} else {
+			status = 'shot';
+		}
+	}
+
+	return status;
+}
+
+const wasKilled = (matrix, x, y) => {
+	if (matrix[y + 1] ? matrix[y + 1][x] : false ||
+		matrix[y - 1] ? matrix[y - 1][x] : false ||
+		matrix[y][x + 1] || matrix[y][x - 1]) {
+			return false;
+	}
+
+	return true;
+}
+
+const hasEnemyShip = (gameId, playerId, ) => {
+	const game = games.find(g => g.gameId === gameId);
+	if (!game) {
+		return false;
+	}
+
+	const enemyShips = game.playerShips.find(p => p.playerId !== playerId);
+	return enemyShips.shipMatrix.some(rows => rows.some(cell => cell === 1));
+}
+
+const getUserIdByPlayerId = (playerId) => {
+	const userId = playerIdUserId.get(playerId);
+	return userId;
+}
+
+export { createGame, addPlayer,addShips, canStartGame, attack, hasEnemyShip, getUserIdByPlayerId };

@@ -44,4 +44,12 @@ const getWins = () => {
 
 	return userWins;
 }
-export { createUser, getWins };
+
+const addWin = (userId) => {
+	const existingUser = users.find(user => user.id === userId);
+	if (existingUser) {
+		existingUser.wins++;
+	}
+}
+
+export { createUser, getWins, addWin };
