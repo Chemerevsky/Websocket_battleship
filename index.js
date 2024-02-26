@@ -19,19 +19,13 @@ wss.on('connection', ws => {
 		console.log(response);
 		switch (response.type) {
 			case 'reg':
-				const newUser = userService.createUser(data);
-				currentUser = newUser;
+				const userResult = userService.createUser(data);
 				const regInfo = {
 					type: 'reg',
-					data:
-						JSON.stringify({
-							name: newUser.name,
-							index: newUser.id,
-							error: false,
-							errorText: ''
-						}),
+					data: JSON.stringify(userResult),
 					id: 0,
 				};
+
 				ws.send(JSON.stringify(regInfo));
 				wss.clients.forEach(client => {
 					if (client.readyState === WebSocket.OPEN) {
