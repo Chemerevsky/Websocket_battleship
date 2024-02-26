@@ -1,9 +1,10 @@
+import crypto from 'crypto'
+
 const rooms = [];
-let lastRoomId = 0;
 
 const createRoom = (userId, userName) => {
 	const room = {
-		roomId: ++lastRoomId,
+		roomId: crypto.randomBytes(16).toString('hex'),
 		roomUsers: [{
 			userId: userId,
 			userName: userName
@@ -25,4 +26,16 @@ const updateRoom = () => {
 	return availableRooms;
 }
 
-export { createRoom, updateRoom };
+const addUserToRoom = (roomId, user) => {
+	const roomToAdd = rooms.find(room => room.roomId === roomId);
+	if (roomToAdd) {
+		if (!roomToAdd.roomUsers.some(u => u.id === user.id)) {
+			roomToAdd.roomUsers.push({
+				userId: user.id,
+				userName: user.name
+			});
+		}
+	}
+}
+
+export { createRoom, updateRoom, addUserToRoom };

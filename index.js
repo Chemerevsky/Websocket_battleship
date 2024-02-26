@@ -2,6 +2,8 @@ import { httpServer } from "./src/http_server/index.js";
 import WebSocket, { WebSocketServer } from 'ws';
 import * as userService from './src/services/userService.js';
 import * as roomService from './src/services/roomService.js';
+import * as gameService from './src/services/gameService.js';
+import crypto from 'crypto'
 
 const HTTP_PORT = 8181;
 
@@ -33,10 +35,37 @@ wss.on('connection', ws => {
 						updateWinners(client);
 					}
 				});
+
+				if (!userResult.error) {
+					currentUser = {
+						name: userResult.name,
+						id: userResult.index
+					}
+				}
 				break;
 			case 'create_room':
 				roomService.createRoom(currentUser.id, currentUser.name);
 				updateRoom(ws);
+				break;
+			case 'add_user_to_room':
+				roomService.addUserToRoom(data.indexRoom, currentUser);
+				const game = gameService.createGame(data.indexRoom);
+				wss.clients.forEach(client => {
+					if (client.readyState === WebSocket.OPEN) {
+						updateRoom(client);
+						sendCreateGame(client, game.gameId, currentUser.id);
+					}
+				});
+				break;
+			case 'add_ships':
+				gameService.addShips(data.gameId, data.indexPlayer, data.ships);
+				if (gameService.canStartGame(data.gameId)) {
+					wss.clients.forEach(client => {
+						if (client.readyState === WebSocket.OPEN) {
+							startGame(client, data.indexPlayer, data.ships);
+						}
+					});
+				}
 				break;
 		}
 	});
@@ -67,4 +96,33 @@ const updateWinners = (ws) => {
 		id: 0,
 	}
 	ws.send(JSON.stringify(winsInfo));
+}
+
+const sendCreateGame = (ws, gameId, userId) => {
+	const playerId = crypto.randomBytes(16).toString('hex');
+	gameService.addPlayer(gameId, playerId, userId);
+
+	const createGameInfo = {
+		type: 'create_game',
+		data: JSON.stringify({
+			idGame: gameId,
+			idPlayer: playerId
+		}),
+		id: 0,
+	}
+
+	ws.send(JSON.stringify(createGameInfo));
+}
+
+const startGame = (ws, ships, playerId) => {
+	const startGameInfo = {
+		type: 'start_game',
+		data: JSON.stringify({
+			ships: ships,
+			currentPlayerIndex: playerId
+		}),
+		id: 0,
+	}
+
+	ws.send(JSON.stringify(startGameInfo));
 }
